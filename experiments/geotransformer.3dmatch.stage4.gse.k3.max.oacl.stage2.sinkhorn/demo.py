@@ -61,7 +61,11 @@ def main():
 
     # prediction
     data_dict = to_cuda(data_dict)
-    output_dict = model(data_dict)
+    # output_dict = model(data_dict)
+    # onnx
+    # with open('network.onnx', 'w') as f:
+    torch.onnx.export(model, {'data_dict': data_dict}, 'network.onnx', opset_version=17)
+
     data_dict = release_cuda(data_dict)
     output_dict = release_cuda(output_dict)
 

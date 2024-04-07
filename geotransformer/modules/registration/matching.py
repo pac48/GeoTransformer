@@ -300,8 +300,11 @@ def get_node_correspondences(
     dist_mat = pairwise_distance(ref_knn_points, src_knn_points)  # (B, K, K)
     dist_mat.masked_fill_(~point_mask_mat, 1e12)
     point_overlap_mat = torch.lt(dist_mat, pos_radius ** 2)  # (B, K, K)
-    ref_overlap_counts = torch.count_nonzero(point_overlap_mat.sum(-1), dim=-1).float()  # (B,)
-    src_overlap_counts = torch.count_nonzero(point_overlap_mat.sum(-2), dim=-1).float()  # (B,)
+    # ref_overlap_counts = torch.count_nonzero(point_overlap_mat.sum(-1), dim=-1).float()  # (B,)
+    ref_overlap_counts = torch.sum(point_overlap_mat.sum(-1) != 0, dim=-1).float()  # (B,)
+    # src_overlap_counts = torch.count_nonzero(point_overlap_mat.sum(-2), dim=-1).float()  # (B,)
+    src_overlap_counts = torch.sum(point_overlap_mat.sum(-2) != 0, dim=-1).float()  # (B,)
+
     ref_overlaps = ref_overlap_counts / ref_knn_masks.sum(-1).float()  # (B,)
     src_overlaps = src_overlap_counts / src_knn_masks.sum(-1).float()  # (B,)
     overlaps = (ref_overlaps + src_overlaps) / 2  # (B,)
@@ -387,8 +390,8 @@ def get_node_overlap_ratios(
     unique_src_corr_indices = torch.unique(corr_indices[:, 1])
     ref_overlap_masks = torch.zeros(ref_points.shape[0] + 1).cuda()  # pad for following indexing
     src_overlap_masks = torch.zeros(src_points.shape[0] + 1).cuda()  # pad for following indexing
-    ref_overlap_masks.index_fill_(0, unique_ref_corr_indices, 1.0)
-    src_overlap_masks.index_fill_(0, unique_src_corr_indices, 1.0)
+    # ref_overlap_masks.index_fill_(0, unique_ref_corr_indices, 1.0)
+    # src_overlap_masks.index_fill_(0, unique_src_corr_indices, 1.0)
     ref_knn_overlap_masks = index_select(ref_overlap_masks, ref_knn_indices, dim=0)  # (N', K)
     src_knn_overlap_masks = index_select(src_overlap_masks, src_knn_indices, dim=0)  # (M', K)
     ref_knn_overlap_ratios = (ref_knn_overlap_masks * ref_knn_masks).sum(1) / (ref_knn_masks.sum(1) + eps)
