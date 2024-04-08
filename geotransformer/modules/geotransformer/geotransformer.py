@@ -8,11 +8,12 @@ from geotransformer.modules.transformer import SinusoidalPositionalEmbedding, RP
 
 def my_atan2(y, x):
     pi = torch.from_numpy(np.array([np.pi])).to(y.device, y.dtype)
-    ans = torch.atan(y/x)
-    ans = torch.where( (y>=0)*(x<0), ans+pi, ans)   # upper left quadrant
-    ans = torch.where( (y<0)*(x<0), ans-pi, ans)   # lower left quadrant
+    ans = torch.atan(y / (x + 1E-12))
+    ans = torch.where((y >= 0) * (x < 0), ans + pi, ans)  # upper left quadrant
+    ans = torch.where((y < 0) * (x < 0), ans - pi, ans)  # lower left quadrant
     # upper right quadrant and lower right quadrant, do nothing
     return ans
+
 
 class GeometricStructureEmbedding(nn.Module):
     def __init__(self, hidden_dim, sigma_d, sigma_a, angle_k, reduction_a='max'):
@@ -82,18 +83,18 @@ class GeometricStructureEmbedding(nn.Module):
 
 class GeometricTransformer(nn.Module):
     def __init__(
-        self,
-        input_dim,
-        output_dim,
-        hidden_dim,
-        num_heads,
-        blocks,
-        sigma_d,
-        sigma_a,
-        angle_k,
-        dropout=None,
-        activation_fn='ReLU',
-        reduction_a='max',
+            self,
+            input_dim,
+            output_dim,
+            hidden_dim,
+            num_heads,
+            blocks,
+            sigma_d,
+            sigma_a,
+            angle_k,
+            dropout=None,
+            activation_fn='ReLU',
+            reduction_a='max',
     ):
         r"""Geometric Transformer (GeoTransformer).
 
@@ -120,13 +121,13 @@ class GeometricTransformer(nn.Module):
         self.out_proj = nn.Linear(hidden_dim, output_dim)
 
     def forward(
-        self,
-        ref_points,
-        src_points,
-        ref_feats,
-        src_feats,
-        ref_masks=None,
-        src_masks=None,
+            self,
+            ref_points,
+            src_points,
+            ref_feats,
+            src_feats,
+            ref_masks=None,
+            src_masks=None,
     ):
         r"""Geometric Transformer
 

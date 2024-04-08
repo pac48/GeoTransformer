@@ -16,11 +16,12 @@ def deg2rad(deg: torch.Tensor) -> torch.Tensor:
 
 def my_atan2(y, x):
     pi = torch.from_numpy(np.array([np.pi])).to(y.device, y.dtype)
-    ans = torch.atan(y/x)
-    ans = torch.where( (y>0)*(x<0), ans+pi, ans)   # upper left quadrant
-    ans = torch.where( (y<0)*(x<0), ans+pi, ans)   # lower left quadrant
+    ans = torch.atan(y / (x + 1E-12))
+    ans = torch.where((y >= 0) * (x < 0), ans + pi, ans)  # upper left quadrant
+    ans = torch.where((y < 0) * (x < 0), ans - pi, ans)  # lower left quadrant
     # upper right quadrant and lower right quadrant, do nothing
     return ans
+
 
 def vector_angle(x: torch.Tensor, y: torch.Tensor, dim: int, use_degree: bool = False):
     r"""Compute the angles between two set of 3D vectors.
