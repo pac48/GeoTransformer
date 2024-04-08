@@ -68,22 +68,29 @@ def main():
     )
 
     # prepare model
-    model = create_model(cfg) # .cuda()
+    model = create_model(cfg).cpu()
     state_dict = torch.load(args.weights)
     model.load_state_dict(state_dict["model"])
 
     # prediction
     # data_dict = to_cuda(data_dict)
-    while True:
-        output_dict = model(data_dict)
-        print(output_dict['estimated_transform'])
-    # onnx
+    # while True:
+    #     output_dict = model(data_dict)
+    #     print(output_dict['estimated_transform'])
+
 
     onnx_model = onnx.load('network.onnx')
     graph = onnx_model.graph
     onnx.checker.check_model(onnx_model)
     import onnxruntime
-    ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
+    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
+    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CPUExecutionProvider"])
+    ort_session = onnxruntime.InferenceSession("network.onnx", providers=[
+        # ('CUDAExecutionProvider', {
+        #     'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
+        # }),
+        'CPUExecutionProvider',
+    ])
     # missing lengths, upsample[0], and batch_size
 
     inputs = {'features': data_dict['features'].cpu().numpy(), 'points_0': data_dict['points'][0].cpu().numpy(),
@@ -106,17 +113,17 @@ def main():
         print(outputs[20])
 
     #
-    # exit(0)
+    exit(0)
     #
     # # with open('network.onnx', 'w') as f:
-    # torch.onnx.export(model, {'data_dict': data_dict}, 'network.onnx', opset_version=17,
-    #                   input_names=['features', 'points_0', 'points_1', 'points_2', 'points_3', 'subsampling_0',
-    #                                'subsampling_1AAA',
-    #                                'subsampling_2AAAA', 'upsampling_1', 'neighbors_0',
-    #                                'neighbors_1', 'neighbors_2', 'neighbors_3', 'subsampling_0'])
-
-
-    data_dict = release_cuda(data_dict)
+    torch.onnx.export(model, {'data_dict': data_dict}, 'network.onnx', opset_version=17,
+                      input_names=['features', 'points_0', 'points_1', 'points_2', 'points_3', 'subsampling_0',
+                                   'subsampling_1AAA',
+                                   'subsampling_2AAAA', 'upsampling_1', 'neighbors_0',
+                                   'neighbors_1', 'neighbors_2', 'neighbors_3', 'subsampling_0'])
+    #
+    #
+    # data_dict = release_cuda(data_dict)
     # output_dict = release_cuda(output_dict)
 
     # # get results

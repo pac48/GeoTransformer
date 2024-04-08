@@ -4,12 +4,12 @@ import ipdb
 
 
 def weighted_procrustes(
-    src_points,
-    ref_points,
-    weights=None,
-    weight_thresh=0.0,
-    eps=1e-5,
-    return_transform=False,
+        src_points,
+        ref_points,
+        weights=None,
+        weight_thresh=0.0,
+        eps=1e-5,
+        return_transform=False,
 ):
     r"""Compute rigid transformation from `src_points` to `ref_points` using weighted SVD.
 
@@ -51,17 +51,21 @@ def weighted_procrustes(
 
     H = src_points_centered.permute(0, 2, 1) @ (weights * ref_points_centered)
     # U, _, V = torch.svd(H.cpu())  # H = USV^T
-    # Ut, V = U.transpose(1, 2).cuda(), V.cuda()
-    # eye = torch.eye(3).unsqueeze(0).repeat(batch_size, 1, 1).cuda()
+    # Ut, V = U.transpose(1, 2).cpu(), V.cpu()
+    # eye = torch.eye(3).unsqueeze(0).repeat(batch_size, 1, 1).cpu()
     # eye[:, -1, -1] = torch.sign(torch.det(V @ Ut))
     # R = V @ eye @ Ut
-    R = H
+
+    R = H / torch.sqrt((H ** 2).sum(dim=1)).reshape(H.shape[0], 1, 3)
+
+    for i in range(50):
+        R = 3.0 / 2.0 * R - 0.5 * R @ R.transpose(1, 2) @ R
 
     t = ref_centroid.permute(0, 2, 1) - R @ src_centroid.permute(0, 2, 1)
     t = t.squeeze(2)
 
     if return_transform:
-        transform = torch.eye(4).unsqueeze(0).repeat(batch_size, 1, 1).cuda()
+        transform = torch.eye(4).unsqueeze(0).repeat(batch_size, 1, 1).cpu()
         transform[:, :3, :3] = R
         transform[:, :3, 3] = t
         if squeeze_first:
