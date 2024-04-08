@@ -4,12 +4,12 @@ import ipdb
 
 
 def weighted_procrustes(
-    src_points,
-    ref_points,
-    weights=None,
-    weight_thresh=0.0,
-    eps=1e-5,
-    return_transform=False,
+        src_points,
+        ref_points,
+        weights=None,
+        weight_thresh=0.0,
+        eps=1e-5,
+        return_transform=False,
 ):
     r"""Compute rigid transformation from `src_points` to `ref_points` using weighted SVD.
 
@@ -57,10 +57,13 @@ def weighted_procrustes(
     # eye[:, -1, -1] = torch.sign(torch.det(V @ Ut))
     # R = V @ eye @ Ut
 
-    R = H / torch.sqrt((H ** 2).sum(dim=1)).reshape(H.shape[0], 1, 3)
-
+    # R = H.transpose(1, 2) / torch.sqrt((H.transpose(1, 2) ** 2).sum(dim=2)).reshape(H.shape[0], 3, 1)
+    R = H
     for i in range(50):
         R = 3.0 / 2.0 * R - 0.5 * R @ R.transpose(1, 2) @ R
+        print(R[0, :, :])
+
+    R = R.transpose(1, 2)
 
     t = ref_centroid.permute(0, 2, 1) - R @ src_centroid.permute(0, 2, 1)
     t = t.squeeze(2)
