@@ -50,7 +50,7 @@ def weighted_procrustes(
     ref_points_centered = ref_points - ref_centroid  # (B, N, 3)
 
     H = src_points_centered.permute(0, 2, 1) @ (weights * ref_points_centered)
-    print(H)
+    # print(H)
     # U, _, V = torch.svd(H.cpu())  # H = USV^T
     # Ut, V = U.transpose(1, 2).cpu(), V.cpu()
     # eye = torch.eye(3).unsqueeze(0).repeat(batch_size, 1, 1).cpu()
@@ -61,7 +61,7 @@ def weighted_procrustes(
     R = H
     for i in range(50):
         R = 3.0 / 2.0 * R - 0.5 * R @ R.transpose(1, 2) @ R
-        print(R[0, :, :])
+        # print(R[0, :, :])
 
     R = R.transpose(1, 2)
 
