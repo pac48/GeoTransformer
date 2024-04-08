@@ -1,7 +1,14 @@
 import argparse
 
 import torch
+torch.manual_seed(0)
+
 import numpy as np
+np.random.seed(0)
+
+import random
+# Set the random seed
+random.seed(0)
 
 from geotransformer.utils.data import registration_collate_fn_stack_mode
 from geotransformer.utils.torch import to_cuda, release_cuda
@@ -74,9 +81,9 @@ def main():
 
     # prediction
     # data_dict = to_cuda(data_dict)
-    # while True:
-    #     output_dict = model(data_dict)
-    #     print(output_dict['estimated_transform'])
+    while True:
+        output_dict = model(data_dict)
+        print(output_dict['estimated_transform'])
 
 
     onnx_model = onnx.load('network.onnx')

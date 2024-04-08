@@ -6,6 +6,14 @@ from geotransformer.modules.ops import pairwise_distance
 from geotransformer.modules.transformer import SinusoidalPositionalEmbedding, RPEConditionalTransformer
 
 
+def my_atan2(y, x):
+    pi = torch.from_numpy(np.array([np.pi])).to(y.device, y.dtype)
+    ans = torch.atan(y/x)
+    ans = torch.where( (y>=0)*(x<0), ans+pi, ans)   # upper left quadrant
+    ans = torch.where( (y<0)*(x<0), ans-pi, ans)   # lower left quadrant
+    # upper right quadrant and lower right quadrant, do nothing
+    return ans
+
 class GeometricStructureEmbedding(nn.Module):
     def __init__(self, hidden_dim, sigma_d, sigma_a, angle_k, reduction_a='max'):
         super(GeometricStructureEmbedding, self).__init__()
@@ -49,7 +57,7 @@ class GeometricStructureEmbedding(nn.Module):
         anc_vectors = anc_vectors.unsqueeze(3).expand(batch_size, num_point, num_point, k, 3)  # (B, N, N, k, 3)
         sin_values = torch.linalg.norm(torch.cross(ref_vectors, anc_vectors, dim=-1), dim=-1)  # (B, N, N, k)
         cos_values = torch.sum(ref_vectors * anc_vectors, dim=-1)  # (B, N, N, k)
-        angles = torch.atan(sin_values/(cos_values+1E-6))  # (B, N, N, k)
+        angles = my_atan2(sin_values, cos_values)  # (B, N, N, k)
         a_indices = angles * self.factor_a
 
         return d_indices, a_indices
