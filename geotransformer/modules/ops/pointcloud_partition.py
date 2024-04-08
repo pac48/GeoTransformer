@@ -86,6 +86,7 @@ def point_to_node_partition(
     point_to_node = sq_dist_mat.min(dim=0)[1]  # (N,)
     node_masks = torch.zeros(nodes.shape[0], dtype=torch.bool).cuda()  # (M,)
     # node_masks.index_fill_(0, point_to_node, True)
+    node_masks[point_to_node] =  True
 
     matching_masks = torch.zeros_like(sq_dist_mat, dtype=torch.bool)  # (M, N)
     point_indices = torch.arange(points.shape[0]).cuda()  # (N,)
@@ -139,6 +140,7 @@ def point_to_node_partition_bug(
     point_to_node = sq_dist_mat.min(dim=0)[1]  # (N,)
     node_masks = torch.zeros(nodes.shape[0], dtype=torch.bool).cuda()  # (M,)
     # node_masks.index_fill_(0, point_to_node, True)
+    node_masks.index_fill_[point_to_node] = True
 
     node_knn_indices = sq_dist_mat.topk(k=point_limit, dim=1, largest=False)[1]  # (M, K)
     node_knn_node_indices = index_select(point_to_node, node_knn_indices, dim=0)  # (M, K)

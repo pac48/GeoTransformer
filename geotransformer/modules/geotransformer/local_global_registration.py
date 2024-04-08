@@ -174,7 +174,7 @@ class LocalGlobalRegistration(nn.Module):
                 ref_corr_points.unsqueeze(0) - batch_aligned_src_corr_points, dim=2
             )
             batch_inlier_masks = torch.lt(batch_corr_residuals, self.acceptance_radius)  # (P, N)
-            best_index = batch_inlier_masks.sum(dim=1).argmax()
+            best_index = batch_inlier_masks.sum(dim=1).float().argmax()
             cur_corr_scores = corr_scores * batch_inlier_masks[best_index].float()
         else:
             # degenerate: initialize transformation with all correspondences
