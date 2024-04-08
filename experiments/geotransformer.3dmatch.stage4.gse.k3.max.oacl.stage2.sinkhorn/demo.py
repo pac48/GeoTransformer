@@ -1,17 +1,8 @@
 import argparse
 
 import torch
-
-torch.manual_seed(0)
-
 import numpy as np
-
-np.random.seed(0)
-
 import random
-
-# Set the random seed
-random.seed(0)
 
 from geotransformer.utils.data import registration_collate_fn_stack_mode
 from geotransformer.utils.torch import to_cuda, release_cuda
@@ -32,8 +23,27 @@ def make_parser():
     return parser
 
 
+def random_rotation_matrix():
+    theta = 2 * np.pi * np.random.random()  # random rotation angle
+    vector = np.random.randn(3)  # random vector
+    vector /= np.linalg.norm(vector)  # convert to a unit vector
+
+    # Compute a skew-symmetric matrix for the vector
+    skew_symmetric = np.array([[0, -vector[2], vector[1]],
+                               [vector[2], 0, -vector[0]],
+                               [-vector[1], vector[0], 0]])
+
+    # Compute the rotation matrix using the Rodriguez formula
+    R = np.eye(3) + np.sin(theta) * skew_symmetric + (1 - np.cos(theta)) * np.dot(skew_symmetric, skew_symmetric)
+    return R
+
+
 def load_data(args):
     src_points = np.load(args.src_file)
+    R = random_rotation_matrix()
+    src_points = src_points @ R
+    src_points += -np.random.rand(1, 3)
+
     ref_points = np.load(args.ref_file)
     src_feats = np.ones_like(src_points[:, :1])
     ref_feats = np.ones_like(ref_points[:, :1])
@@ -94,47 +104,47 @@ def main():
     # onnx.checker.check_model(onnx_model)
     # # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
     # # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CPUExecutionProvider"])
-    ort_session = onnxruntime.InferenceSession("network.onnx", providers=[
-        # ('CUDAExecutionProvider', {
-        #     'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
-        # }),
-        'CPUExecutionProvider',
-    ])
-    # missing lengths, upsample[0], and batch_size
-    names = ['points_0',
-             'points_1',
-             'points_2',
-             'points_3',
-             'subsampling_0.1',
-             'neighbors_1',
-             'neighbors_2',
-             'neighbors_3',
-             'subsampling_0',
-             'neighbor_indices.3',
-             'neighbor_indices.7',
-             'neighbor_indices.11',
-             'onnx::Gather_18',
-             'onnx::Gather_19']
-
-    inputs = {names[0]: data_dict['features'].cpu().numpy(),
-              names[1]: data_dict['points'][0].cpu().numpy(),
-              names[2]: data_dict['points'][1].cpu().numpy(),
-              names[3]: data_dict['points'][2].cpu().numpy(),
-              names[4]: data_dict['points'][3].cpu().numpy(),
-              names[5]: data_dict['neighbors'][0].cpu().numpy(),
-              names[6]: data_dict['neighbors'][1].cpu().numpy(),
-              names[7]: data_dict['neighbors'][2].cpu().numpy(),
-              names[8]: data_dict['neighbors'][3].cpu().numpy(),
-              names[9]: data_dict['subsampling'][0].cpu().numpy(),
-              names[10]: data_dict['subsampling'][1].cpu().numpy(),
-              names[11]: data_dict['subsampling'][2].cpu().numpy(),
-              names[12]: data_dict['upsampling'][1].cpu().numpy(),
-              names[13]: data_dict['upsampling'][2].cpu().numpy()
-              }
-
-    while True:
-        outputs = ort_session.run(None, inputs)
-        print(outputs[20])
+    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=[
+    #     # ('CUDAExecutionProvider', {
+    #     #     'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
+    #     # }),
+    #     'CPUExecutionProvider',
+    # ])
+    # # missing lengths, upsample[0], and batch_size
+    # names = ['points_0',
+    #          'points_1',
+    #          'points_2',
+    #          'points_3',
+    #          'subsampling_0.1',
+    #          'neighbors_1',
+    #          'neighbors_2',
+    #          'neighbors_3',
+    #          'subsampling_0',
+    #          'neighbor_indices.3',
+    #          'neighbor_indices.7',
+    #          'neighbor_indices.11',
+    #          'onnx::Gather_18',
+    #          'onnx::Gather_19']
+    #
+    # inputs = {names[0]: data_dict['features'].cpu().numpy(),
+    #           names[1]: data_dict['points'][0].cpu().numpy(),
+    #           names[2]: data_dict['points'][1].cpu().numpy(),
+    #           names[3]: data_dict['points'][2].cpu().numpy(),
+    #           names[4]: data_dict['points'][3].cpu().numpy(),
+    #           names[5]: data_dict['neighbors'][0].cpu().numpy(),
+    #           names[6]: data_dict['neighbors'][1].cpu().numpy(),
+    #           names[7]: data_dict['neighbors'][2].cpu().numpy(),
+    #           names[8]: data_dict['neighbors'][3].cpu().numpy(),
+    #           names[9]: data_dict['subsampling'][0].cpu().numpy(),
+    #           names[10]: data_dict['subsampling'][1].cpu().numpy(),
+    #           names[11]: data_dict['subsampling'][2].cpu().numpy(),
+    #           names[12]: data_dict['upsampling'][1].cpu().numpy(),
+    #           names[13]: data_dict['upsampling'][2].cpu().numpy()
+    #           }
+    #
+    # while True:
+    #     outputs = ort_session.run(None, inputs)
+    #     print(outputs[20])
     #
 
     # exit(0)
