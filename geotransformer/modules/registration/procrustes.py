@@ -4,12 +4,12 @@ import ipdb
 
 
 def weighted_procrustes(
-        src_points,
-        ref_points,
-        weights=None,
-        weight_thresh=0.0,
-        eps=1e-5,
-        return_transform=False,
+    src_points,
+    ref_points,
+    weights=None,
+    weight_thresh=0.0,
+    eps=1e-5,
+    return_transform=False,
 ):
     r"""Compute rigid transformation from `src_points` to `ref_points` using weighted SVD.
 

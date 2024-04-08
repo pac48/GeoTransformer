@@ -42,9 +42,9 @@ def load_data(args):
         "src_feats": src_feats.astype(np.float32),
     }
 
-    # if args.gt_file is not None:
-    #     transform = np.load(args.gt_file)
-    #     data_dict["transform"] = transform.astype(np.float32)
+    if args.gt_file is not None:
+        transform = np.load(args.gt_file)
+        data_dict["transform"] = transform.astype(np.float32)
 
     # feats = data_dict['features'].detach()
     # ref_length_c = data_dict['lengths'][-1][0].item()
@@ -84,75 +84,78 @@ def main():
     while True:
         output_dict = model(data_dict)
         print(output_dict['estimated_transform'])
+        break
 
-
-    onnx_model = onnx.load('network.onnx')
-    graph = onnx_model.graph
-    onnx.checker.check_model(onnx_model)
-    import onnxruntime
-    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
-    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CPUExecutionProvider"])
-    ort_session = onnxruntime.InferenceSession("network.onnx", providers=[
-        # ('CUDAExecutionProvider', {
-        #     'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
-        # }),
-        'CPUExecutionProvider',
-    ])
-    # missing lengths, upsample[0], and batch_size
-
-    inputs = {'features': data_dict['features'].cpu().numpy(), 'points_0': data_dict['points'][0].cpu().numpy(),
-              'points_1': data_dict['points'][1].cpu().numpy(),
-              'points_2': data_dict['points'][2].cpu().numpy(), 'points_3': data_dict['points'][3].cpu().numpy(),
-              # 'neighbors_0': data_dict['neighbors'][0], 'neighbors_1': data_dict['neighbors'][1],
-              # 'neighbors_2': data_dict['neighbors'][2], 'neighbors_3': data_dict['neighbors'][3],
-              'neighbors_0': data_dict['neighbors'][0].cpu().numpy(),
-              'neighbors_1': data_dict['neighbors'][1].cpu().numpy(),
-              'neighbors_2': data_dict['neighbors'][2].cpu().numpy(),
-              'neighbors_3': data_dict['neighbors'][3].cpu().numpy(),
-              'subsampling_0': data_dict['subsampling'][0].cpu().numpy(),
-
-              'neighbor_indices.7': data_dict['subsampling'][1].cpu().numpy(),
-              'neighbor_indices.11': data_dict['subsampling'][2].cpu().numpy(),
-              'onnx::Gather_17': data_dict['upsampling'][1].cpu().numpy(),
-              'onnx::Gather_18': data_dict['upsampling'][2].cpu().numpy()}
-    while True:
-        outputs = ort_session.run(None, inputs)
-        print(outputs[20])
-
+    # onnx_model = onnx.load('network.onnx')
+    # graph = onnx_model.graph
+    # onnx.checker.check_model(onnx_model)
+    # import onnxruntime
+    # # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
+    # # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CPUExecutionProvider"])
+    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=[
+    #     # ('CUDAExecutionProvider', {
+    #     #     'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
+    #     # }),
+    #     'CPUExecutionProvider',
+    # ])
+    # # missing lengths, upsample[0], and batch_size
     #
-    exit(0)
+    # inputs = {'features': data_dict['features'].cpu().numpy(), 'points_0': data_dict['points'][0].cpu().numpy(),
+    #           'points_1': data_dict['points'][1].cpu().numpy(),
+    #           'points_2': data_dict['points'][2].cpu().numpy(), 'points_3': data_dict['points'][3].cpu().numpy(),
+    #           # 'neighbors_0': data_dict['neighbors'][0], 'neighbors_1': data_dict['neighbors'][1],
+    #           # 'neighbors_2': data_dict['neighbors'][2], 'neighbors_3': data_dict['neighbors'][3],
+    #           'neighbors_0': data_dict['neighbors'][0].cpu().numpy(),
+    #           'neighbors_1': data_dict['neighbors'][1].cpu().numpy(),
+    #           'neighbors_2': data_dict['neighbors'][2].cpu().numpy(),
+    #           'neighbors_3': data_dict['neighbors'][3].cpu().numpy(),
+    #           'subsampling_0': data_dict['subsampling'][0].cpu().numpy(),
+    #
+    #           'neighbor_indices.7': data_dict['subsampling'][1].cpu().numpy(),
+    #           'neighbor_indices.11': data_dict['subsampling'][2].cpu().numpy(),
+    #           'onnx::Gather_17': data_dict['upsampling'][1].cpu().numpy(),
+    #           'onnx::Gather_18': data_dict['upsampling'][2].cpu().numpy()}
+    # while True:
+    #     outputs = ort_session.run(None, inputs)
+    #     print(outputs[20])
+    #
+
+
+    # exit(0)
     #
     # # with open('network.onnx', 'w') as f:
-    torch.onnx.export(model, {'data_dict': data_dict}, 'network.onnx', opset_version=17,
-                      input_names=['features', 'points_0', 'points_1', 'points_2', 'points_3', 'subsampling_0',
-                                   'subsampling_1AAA',
-                                   'subsampling_2AAAA', 'upsampling_1', 'neighbors_0',
-                                   'neighbors_1', 'neighbors_2', 'neighbors_3', 'subsampling_0'])
+    # torch.onnx.export(model, {'data_dict': data_dict}, 'network.onnx', opset_version=17,
+    #                   input_names=['features', 'points_0', 'points_1', 'points_2', 'points_3', 'subsampling_0',
+    #                                'subsampling_1AAA',
+    #                                'subsampling_2AAAA', 'upsampling_1', 'neighbors_0',
+    #                                'neighbors_1', 'neighbors_2', 'neighbors_3', 'subsampling_0'])
     #
     #
-    # data_dict = release_cuda(data_dict)
-    # output_dict = release_cuda(output_dict)
+
+
+    data_dict = release_cuda(data_dict)
+    output_dict = release_cuda(output_dict)
 
     # # get results
-    # ref_points = output_dict["ref_points"]
-    # src_points = output_dict["src_points"]
-    # estimated_transform = output_dict["estimated_transform"]
-    # transform = data_dict["transform"]
-    #
-    # # visualization
-    # ref_pcd = make_open3d_point_cloud(ref_points)
-    # ref_pcd.estimate_normals()
-    # ref_pcd.paint_uniform_color(get_color("custom_yellow"))
-    # src_pcd = make_open3d_point_cloud(src_points)
-    # src_pcd.estimate_normals()
-    # src_pcd.paint_uniform_color(get_color("custom_blue"))
-    # draw_geometries(ref_pcd, src_pcd)
-    # src_pcd = src_pcd.transform(estimated_transform)
-    # draw_geometries(ref_pcd, src_pcd)
-    #
-    # # compute error
-    # rre, rte = compute_registration_error(transform, estimated_transform)
-    # print(f"RRE(deg): {rre:.3f}, RTE(m): {rte:.3f}")
+    ref_points = output_dict["ref_points"]
+    src_points = output_dict["src_points"]
+    estimated_transform = output_dict["estimated_transform"]
+    transform = data_dict["transform"]
+
+    # visualization
+    ref_pcd = make_open3d_point_cloud(ref_points)
+    ref_pcd.estimate_normals()
+    ref_pcd.paint_uniform_color(get_color("custom_yellow"))
+    src_pcd = make_open3d_point_cloud(src_points)
+    src_pcd.estimate_normals()
+    src_pcd.paint_uniform_color(get_color("custom_blue"))
+    draw_geometries(ref_pcd, src_pcd)
+    src_pcd = src_pcd.transform(estimated_transform)
+    draw_geometries(ref_pcd, src_pcd)
+
+    # compute error
+    rre, rte = compute_registration_error(transform, estimated_transform)
+    print(f"RRE(deg): {rre:.3f}, RTE(m): {rte:.3f}")
 
 
 if __name__ == "__main__":
