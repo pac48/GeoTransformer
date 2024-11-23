@@ -66,19 +66,19 @@ class GeoTransformer(nn.Module):
 
         self.optimal_transport = LearnableLogOptimalTransport(cfg.model.num_sinkhorn_iterations)
 
-    def forward(self, data_dict):
+    def forward(self, points_list, lengths_list, neighbors_list, subsampling_list, upsampling_list):
         output_dict = {}
 
         # Downsample point clouds
-        feats = data_dict['features'].detach()
+        # feats = data_dict['features'].detach()
         # transform = data_dict['transform'].detach()
 
-        ref_length_c = data_dict['lengths'][-1][0].item()
-        ref_length_f = data_dict['lengths'][1][0].item()
-        ref_length = data_dict['lengths'][0][0].item()
-        points_c = data_dict['points'][-1].detach()
-        points_f = data_dict['points'][1].detach()
-        points = data_dict['points'][0].detach()
+        ref_length_c = lengths_list[-1][0].item()
+        ref_length_f = lengths_list[1][0].item()
+        ref_length = lengths_list[0][0].item()
+        points_c = points_list[-1].detach()
+        points_f = points_list[1].detach()
+        points = points_list[0].detach()
 
         ref_points_c = points_c[:ref_length_c]
         src_points_c = points_c[ref_length_c:]
@@ -124,7 +124,7 @@ class GeoTransformer(nn.Module):
         # output_dict['gt_node_corr_overlaps'] = gt_node_corr_overlaps
 
         # 2. KPFCNN Encoder
-        feats_list = self.backbone(feats, data_dict)
+        feats_list = self.backbone(points_list, neighbors_list, subsampling_list, upsampling_list)
 
         feats_c = feats_list[-1]
         feats_f = feats_list[0]

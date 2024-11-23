@@ -12,6 +12,7 @@ from geotransformer.utils.registration import compute_registration_error
 from config import make_cfg
 from model import create_model
 import onnxruntime
+import onnx
 
 
 def make_parser():
@@ -42,7 +43,7 @@ def load_data(args):
     src_points = np.load(args.src_file)
     R = random_rotation_matrix()
     src_points = src_points @ R
-    src_points += -np.random.rand(1, 3)
+    src_points += .5 * (.5 - np.random.rand(1, 3))
 
     ref_points = np.load(args.ref_file)
     src_feats = np.ones_like(src_points[:, :1])
@@ -94,16 +95,16 @@ def main():
 
     # prediction
     # data_dict = to_cuda(data_dict)
-    while True:
-        output_dict = model(data_dict)
-        print(output_dict['estimated_transform'])
-        break
+    # while True:
+    #     output_dict = model(data_dict)
+    #     print(output_dict['estimated_transform'])
+    #     break
 
     # onnx_model = onnx.load('network.onnx')
     # graph = onnx_model.graph
     # onnx.checker.check_model(onnx_model)
-    # # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
-    # # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CPUExecutionProvider"])
+    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CUDAExecutionProvider"])
+    # ort_session = onnxruntime.InferenceSession("network.onnx", providers=["CPUExecutionProvider"])
     # ort_session = onnxruntime.InferenceSession("network.onnx", providers=[
     #     # ('CUDAExecutionProvider', {
     #     #     'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
@@ -148,14 +149,17 @@ def main():
     #
 
     # exit(0)
-    #
-    # # with open('network.onnx', 'w') as f:
-    # torch.onnx.export(model, {'data_dict': data_dict}, 'network.onnx', opset_version=17,
-    #                   input_names=['features', 'points_0', 'points_1', 'points_2', 'points_3', 'subsampling_0',
-    #                                'subsampling_1AAA',
-    #                                'subsampling_2AAAA', 'upsampling_1', 'neighbors_0',
-    #                                'neighbors_1', 'neighbors_2', 'neighbors_3', 'subsampling_0'])
-    # exit(0)
+
+    points = data_dict['points']
+    lengths = data_dict['lengths']
+    neighbors = data_dict['neighbors']
+    subsampling = data_dict['subsampling']
+    upsampling = data_dict['upsampling']
+
+    torch.onnx.export(model, args=(points, lengths, neighbors, subsampling, upsampling), f='network.onnx',
+                      opset_version=17,
+                      input_names=['points', 'lengths', 'neighbors', 'subsampling', 'upsampling'])
+    exit(0)
     #
     #
 
