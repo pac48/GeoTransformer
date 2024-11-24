@@ -29,8 +29,8 @@ class SuperPointMatching(nn.Module):
         if src_masks is None:
             src_masks = torch.ones(size=(src_feats.shape[0],), dtype=torch.bool).cuda()
         # remove empty patch
-        ref_indices = torch.nonzero(ref_masks, as_tuple=True)[0]
-        src_indices = torch.nonzero(src_masks, as_tuple=True)[0]
+        ref_indices = torch.nonzero(ref_masks, as_tuple=True)[0].cuda()
+        src_indices = torch.nonzero(src_masks, as_tuple=True)[0].cuda()
         ref_feats = ref_feats[ref_indices]
         src_feats = src_feats[src_indices]
         # select top-k proposals

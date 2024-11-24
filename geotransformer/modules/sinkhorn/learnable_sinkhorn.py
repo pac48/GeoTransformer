@@ -11,7 +11,7 @@ class LearnableLogOptimalTransport(nn.Module):
         self.inf = inf
 
     def log_sinkhorn_normalization(self, scores, log_mu, log_nu):
-        u, v = torch.zeros_like(log_mu), torch.zeros_like(log_nu)
+        u, v = torch.zeros_like(log_mu).cuda(), torch.zeros_like(log_nu).cuda()
         for _ in range(self.num_iterations):
             u = log_mu - torch.logsumexp(scores + v.unsqueeze(1), dim=2)
             v = log_nu - torch.logsumexp(scores + u.unsqueeze(2), dim=1)
@@ -39,23 +39,23 @@ class LearnableLogOptimalTransport(nn.Module):
         padded_row_masks[:, :num_row] = ~row_masks
         padded_col_masks = torch.zeros(size=(batch_size, num_col + 1), dtype=torch.bool).cpu()
         padded_col_masks[:, :num_col] = ~col_masks
-        padded_score_masks = torch.logical_or(padded_row_masks.unsqueeze(2), padded_col_masks.unsqueeze(1))
+        padded_score_masks = torch.logical_or(padded_row_masks.unsqueeze(2), padded_col_masks.unsqueeze(1)).cuda()
 
         padded_col = self.alpha.expand(batch_size, num_row, 1)
         padded_row = self.alpha.expand(batch_size, 1, num_col + 1)
-        padded_scores = torch.cat([torch.cat([scores, padded_col], dim=-1), padded_row], dim=1)
+        padded_scores = torch.cat([torch.cat([scores, padded_col], dim=-1), padded_row], dim=1).cuda()
         padded_scores.masked_fill_(padded_score_masks, -self.inf)
 
         num_valid_row = row_masks.float().sum(1)
         num_valid_col = col_masks.float().sum(1)
         norm = -torch.log(num_valid_row + num_valid_col)  # (B,)
 
-        log_mu = torch.empty(size=(batch_size, num_row + 1)).cpu()
+        log_mu = torch.empty(size=(batch_size, num_row + 1)).cuda()
         log_mu[:, :num_row] = norm.unsqueeze(1)
         log_mu[:, num_row] = torch.log(num_valid_col) + norm
         log_mu[padded_row_masks] = -self.inf
 
-        log_nu = torch.empty(size=(batch_size, num_col + 1)).cpu()
+        log_nu = torch.empty(size=(batch_size, num_col + 1)).cuda()
         log_nu[:, :num_col] = norm.unsqueeze(1)
         log_nu[:, num_col] = torch.log(num_valid_row) + norm
         log_nu[padded_col_masks] = -self.inf

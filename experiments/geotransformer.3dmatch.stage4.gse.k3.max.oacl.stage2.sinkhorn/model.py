@@ -66,16 +66,25 @@ class GeoTransformer(nn.Module):
 
         self.optimal_transport = LearnableLogOptimalTransport(cfg.model.num_sinkhorn_iterations)
 
-    def forward(self, points_list, lengths_list, neighbors_list, subsampling_list, upsampling_list):
+    def forward(self, points_0, points_1, points_2, points_3, lengths_0, lengths_1, lengths_2, lengths_3, neighbors_0,
+                neighbors_1,
+                neighbors_2, neighbors_3, subsampling_0, subsampling_1,
+                subsampling_2, upsampling_0, upsampling_1, upsampling_2):
         output_dict = {}
+
+        points_list = [points_0, points_1, points_2, points_3]
+        lengths_list = [lengths_0, lengths_1, lengths_2, lengths_3]
+        neighbors_list = [neighbors_0, neighbors_1, neighbors_2, neighbors_3]
+        subsampling_list = [subsampling_0, subsampling_1, subsampling_2]
+        upsampling_list = [upsampling_0, upsampling_1, upsampling_2]
 
         # Downsample point clouds
         # feats = data_dict['features'].detach()
         # transform = data_dict['transform'].detach()
 
-        ref_length_c = lengths_list[-1][0].item()
-        ref_length_f = lengths_list[1][0].item()
-        ref_length = lengths_list[0][0].item()
+        ref_length_c = lengths_list[-1][0]
+        ref_length_f = lengths_list[1][0]
+        ref_length = lengths_list[0][0]
         points_c = points_list[-1].detach()
         points_f = points_list[1].detach()
         points = points_list[0].detach()
@@ -190,6 +199,8 @@ class GeoTransformer(nn.Module):
 
         output_dict['matching_scores'] = matching_scores
 
+        return ref_node_corr_knn_points, src_node_corr_knn_points, ref_node_corr_knn_masks, src_node_corr_knn_masks, matching_scores, node_corr_scores
+
         # 9. Generate final correspondences during testing
         with torch.no_grad():
             if not self.fine_matching.use_dustbin:
@@ -209,7 +220,9 @@ class GeoTransformer(nn.Module):
             output_dict['corr_scores'] = corr_scores
             output_dict['estimated_transform'] = estimated_transform
 
-        return output_dict
+        out = torch.zeros(4, 4)
+        out[:, :] = estimated_transform
+        return out
 
 
 def create_model(config):

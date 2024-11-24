@@ -13,6 +13,7 @@ from config import make_cfg
 from model import create_model
 import onnxruntime
 import onnx
+import onnxruntime as ort
 
 
 def make_parser():
@@ -88,58 +89,40 @@ def main():
         [data_dict], cfg.backbone.num_stages, cfg.backbone.init_voxel_size, cfg.backbone.init_radius, neighbor_limits
     )
 
-    # prepare model
-    model = create_model(cfg).cpu()
-    state_dict = torch.load(args.weights)
-    model.load_state_dict(state_dict["model"])
+    ort_sess = ort.InferenceSession('network.onnx')
 
-    points_0 = data_dict['points'][0]
-    points_1 = data_dict['points'][1]
-    points_2 = data_dict['points'][2]
-    points_3 = data_dict['points'][3]
-    lengths_0 = data_dict['lengths'][0]
-    lengths_1 = data_dict['lengths'][1]
-    lengths_2 = data_dict['lengths'][2]
-    lengths_3 = data_dict['lengths'][3]
-    neighbors_0 = data_dict['neighbors'][0]
-    neighbors_1 = data_dict['neighbors'][1]
-    neighbors_2 = data_dict['neighbors'][2]
-    neighbors_3 = data_dict['neighbors'][3]
-    subsampling_0 = data_dict['subsampling'][0]
-    subsampling_1 = data_dict['subsampling'][1]
-    subsampling_2 = data_dict['subsampling'][2]
-    upsampling_0 = data_dict['upsampling'][0]
-    upsampling_1 = data_dict['upsampling'][1]
-    upsampling_2 = data_dict['upsampling'][2]
+    points_0 = data_dict['points'][0].numpy()
+    points_1 = data_dict['points'][1].numpy()
+    points_2 = data_dict['points'][2].numpy()
+    points_3 = data_dict['points'][3].numpy()
+    lengths_0 = data_dict['lengths'][0].numpy()
+    lengths_1 = data_dict['lengths'][1].numpy()
+    lengths_2 = data_dict['lengths'][2].numpy()
+    lengths_3 = data_dict['lengths'][3].numpy()
+    neighbors_0 = data_dict['neighbors'][0].numpy()
+    neighbors_1 = data_dict['neighbors'][1].numpy()
+    neighbors_2 = data_dict['neighbors'][2].numpy()
+    neighbors_3 = data_dict['neighbors'][3].numpy()
+    subsampling_0 = data_dict['subsampling'][0].numpy()
+    subsampling_1 = data_dict['subsampling'][1].numpy()
+    subsampling_2 = data_dict['subsampling'][2].numpy()
+    upsampling_0 = data_dict['upsampling'][0].numpy()
+    upsampling_1 = data_dict['upsampling'][1].numpy()
+    upsampling_2 = data_dict['upsampling'][2].numpy()
 
-    torch.onnx.export(model, args=(
-        points_0, points_1, points_2, points_3, lengths_0, lengths_1, lengths_2, lengths_3, neighbors_0, neighbors_1,
-        neighbors_2, neighbors_3, subsampling_0, subsampling_1,
-        subsampling_2, upsampling_0, upsampling_1, upsampling_2),
-                      f='network.onnx',
-                      opset_version=17,
-                      input_names=['points_0', 'points_1', 'points_2', 'points_3', 'lengths_0', 'lengths_1',
-                                   'lengths_2', 'lengths_3', 'neighbors_0', 'neighbors_1',
-                                   'neighbors_2', 'neighbors_3', 'subsampling_0', 'subsampling_1',
-                                   'subsampling_2', 'upsampling_0', 'upsampling_1', 'upsampling_2'],
-                      dynamic_axes={'points_0': {0: 'num_points_0'},  # variable length axes
-                                    'points_1': {0: 'num_points_1'},
-                                    'points_2': {0: 'num_points_2'},
-                                    'points_3': {0: 'num_points_3'},
-                                    'neighbors_0': {0: 'num_points_0'},
-                                    'neighbors_1': {0: 'num_points_1'},
-                                    'neighbors_2': {0: 'num_points_2'},
-                                    'neighbors_3': {0: 'num_points_3'},
-                                    'subsampling_0': {0: 'num_points_0'},
-                                    'subsampling_1': {0: 'num_points_1'},
-                                    'subsampling_2': {0: 'num_points_2'},
-                                    'upsampling_0': {0: 'num_points_0'},
-                                    'upsampling_1': {0: 'num_points_1'},
-                                    'upsampling_2': {0: 'num_points_2'},
-                                    },
-                      output_names=['ref_node_corr_knn_points', 'src_node_corr_knn_points', 'ref_node_corr_knn_masks',
-                                    'src_node_corr_knn_masks', 'matching_scores', 'node_corr_scores']
-                      )
+    out = ort_sess.run(
+        ['ref_node_corr_knn_points', 'src_node_corr_knn_points', 'ref_node_corr_knn_masks', 'src_node_corr_knn_masks',
+         'matching_scores', 'node_corr_scores'],
+        {'points_0': points_0, 'points_1': points_1, 'points_2': points_2, 'points_3': points_3,
+         'lengths_1': lengths_1,
+         'lengths_3': lengths_3, 'neighbors_0': neighbors_0,
+         'neighbors_1': neighbors_1,
+         'neighbors_2': neighbors_2, 'neighbors_3': neighbors_3, 'subsampling_0': subsampling_0,
+         'subsampling_1': subsampling_1,
+         'subsampling_2': subsampling_2, 'upsampling_1': upsampling_1,
+         'upsampling_2': upsampling_2})
+
+    pass
 
 
 if __name__ == "__main__":
