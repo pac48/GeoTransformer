@@ -64,11 +64,11 @@ def weighted_procrustes(
     #     # print(R[0, :, :])
     # R = R.transpose(1, 2)
 
-    t = ref_centroid.permute(0, 2, 1) - R @ src_centroid.permute(0, 2, 1)
+    t = ref_centroid.permute(0, 2, 1) - R.cuda() @ src_centroid.permute(0, 2, 1)
     t = t.squeeze(2)
 
     if return_transform:
-        transform = torch.eye(4).unsqueeze(0).repeat(batch_size, 1, 1).cpu()
+        transform = torch.eye(4).unsqueeze(0).repeat(batch_size, 1, 1).cuda()
         transform[:, :3, :3] = R
         transform[:, :3, 3] = t
         if squeeze_first:

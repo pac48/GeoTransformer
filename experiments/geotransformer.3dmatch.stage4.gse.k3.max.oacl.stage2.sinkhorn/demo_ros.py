@@ -49,7 +49,7 @@ def load_data(args):
     return data_dict
 
 
-def run_model(model, ref_points, src_points):
+def run_model(ort_sess, model, ref_points, src_points):
     num_stages = 4
     neighbor_limits = [38, 36, 36, 38]
     init_voxel_size = 0.025
@@ -67,46 +67,82 @@ def run_model(model, ref_points, src_points):
         [data_dict], num_stages, init_voxel_size, init_radius, neighbor_limits
     )
 
-    points_0 = data_dict['points'][0].cuda()
-    points_1 = data_dict['points'][1].cuda()
-    points_2 = data_dict['points'][2].cuda()
-    points_3 = data_dict['points'][3].cuda()
-    lengths_0 = data_dict['lengths'][0].cuda()
-    lengths_1 = data_dict['lengths'][1].cuda()
-    lengths_2 = data_dict['lengths'][2].cuda()
-    lengths_3 = data_dict['lengths'][3].cuda()
-    neighbors_0 = data_dict['neighbors'][0].cuda()
-    neighbors_1 = data_dict['neighbors'][1].cuda()
-    neighbors_2 = data_dict['neighbors'][2].cuda()
-    neighbors_3 = data_dict['neighbors'][3].cuda()
-    subsampling_0 = data_dict['subsampling'][0].cuda()
-    subsampling_1 = data_dict['subsampling'][1].cuda()
-    subsampling_2 = data_dict['subsampling'][2].cuda()
-    upsampling_0 = data_dict['upsampling'][0].cuda()
-    upsampling_1 = data_dict['upsampling'][1].cuda()
-    upsampling_2 = data_dict['upsampling'][2].cuda()
+    run_onnx = False
+    if run_onnx:
+        points_0 = data_dict['points'][0].cpu().numpy()
+        points_1 = data_dict['points'][1].cpu().numpy()
+        points_2 = data_dict['points'][2].cpu().numpy()
+        points_3 = data_dict['points'][3].cpu().numpy()
+        lengths_0 = data_dict['lengths'][0].cpu().numpy()
+        lengths_1 = data_dict['lengths'][1].cpu().numpy()
+        lengths_2 = data_dict['lengths'][2].cpu().numpy()
+        lengths_3 = data_dict['lengths'][3].cpu().numpy()
+        neighbors_0 = data_dict['neighbors'][0].cpu().numpy()
+        neighbors_1 = data_dict['neighbors'][1].cpu().numpy()
+        neighbors_2 = data_dict['neighbors'][2].cpu().numpy()
+        neighbors_3 = data_dict['neighbors'][3].cpu().numpy()
+        subsampling_0 = data_dict['subsampling'][0].cpu().numpy()
+        subsampling_1 = data_dict['subsampling'][1].cpu().numpy()
+        subsampling_2 = data_dict['subsampling'][2].cpu().numpy()
+        upsampling_0 = data_dict['upsampling'][0].cpu().numpy()
+        upsampling_1 = data_dict['upsampling'][1].cpu().numpy()
+        upsampling_2 = data_dict['upsampling'][2].cpu().numpy()
 
-    # prediction
-    ref_node_corr_knn_points, src_node_corr_knn_points, ref_node_corr_knn_masks, src_node_corr_knn_masks, matching_scores, node_corr_scores = model(
+        ref_node_corr_knn_points, src_node_corr_knn_points, ref_node_corr_knn_masks, src_node_corr_knn_masks, matching_scores, node_corr_scores = ort_sess.run(
+            None,
+            {'points_0': points_0, 'points_1': points_1, 'points_2': points_2, 'points_3': points_3,
+             'lengths_1': lengths_1, 'lengths_3': lengths_3, 'neighbors_0': neighbors_0,
+             'neighbors_1': neighbors_1,
+             'neighbors_2': neighbors_2, 'neighbors_3': neighbors_3, 'subsampling_0': subsampling_0,
+             'subsampling_1': subsampling_1,
+             'subsampling_2': subsampling_2, 'upsampling_1': upsampling_1,
+             'upsampling_2': upsampling_2})
+
+    else:
+        points_0 = data_dict['points'][0].cuda()
+        points_1 = data_dict['points'][1].cuda()
+        points_2 = data_dict['points'][2].cuda()
+        points_3 = data_dict['points'][3].cuda()
+        lengths_0 = data_dict['lengths'][0].cuda()
+        lengths_1 = data_dict['lengths'][1].cuda()
+        lengths_2 = data_dict['lengths'][2].cuda()
+        lengths_3 = data_dict['lengths'][3].cuda()
+        neighbors_0 = data_dict['neighbors'][0].cuda()
+        neighbors_1 = data_dict['neighbors'][1].cuda()
+        neighbors_2 = data_dict['neighbors'][2].cuda()
+        neighbors_3 = data_dict['neighbors'][3].cuda()
+        subsampling_0 = data_dict['subsampling'][0].cuda()
+        subsampling_1 = data_dict['subsampling'][1].cuda()
+        subsampling_2 = data_dict['subsampling'][2].cuda()
+        upsampling_0 = data_dict['upsampling'][0].cuda()
+        upsampling_1 = data_dict['upsampling'][1].cuda()
+        upsampling_2 = data_dict['upsampling'][2].cuda()
+
+        ref_node_corr_knn_points, src_node_corr_knn_points, ref_node_corr_knn_masks, src_node_corr_knn_masks, matching_scores, node_corr_scores = model(
         points_0, points_1, points_2, points_3, lengths_0, lengths_1, lengths_2, lengths_3, neighbors_0, neighbors_1,
         neighbors_2, neighbors_3, subsampling_0, subsampling_1,
         subsampling_2, upsampling_0, upsampling_1, upsampling_2)
 
+# prediction
+
     matching_scores = matching_scores[:, :-1, :-1]
+    # ref_node_corr_knn_points = ref_node_corr_knn_points.cpu()
+    # src_node_corr_knn_points = src_node_corr_knn_points.cpu()
+
 
     ref_corr_points, src_corr_points, corr_scores, estimated_transform = model.fine_matching(
-        ref_node_corr_knn_points.cpu(),
-        src_node_corr_knn_points.cpu(),
-        ref_node_corr_knn_masks.cpu(),
-        src_node_corr_knn_masks.cpu(),
-        matching_scores.cpu(),
-        node_corr_scores.cpu(),
+        ref_node_corr_knn_points,
+        src_node_corr_knn_points,
+        ref_node_corr_knn_masks,
+        src_node_corr_knn_masks,
+        matching_scores,
+        node_corr_scores,
     )
 
     # get results
-    ref_points = points_0[:lengths_0[0]].cpu().numpy()
-    src_points = points_0[lengths_0[0]:].cpu().numpy()
-    estimated_transform = estimated_transform.detach().cpu().numpy()
+    ref_points = points_0[:lengths_0[0]]
+    src_points = points_0[lengths_0[0]:]
+    estimated_transform = estimated_transform
 
     return estimated_transform, ref_points, src_points
 
@@ -114,6 +150,7 @@ def run_model(model, ref_points, src_points):
 import rclpy
 from rclpy.node import Node
 from tutorial_interfaces.srv import Registration
+import onnxruntime as ort
 
 
 class GeotransformerROS(Node):
@@ -122,6 +159,8 @@ class GeotransformerROS(Node):
         super().__init__('geotransformer')
         self.srv = self.create_service(Registration, 'geotransformer_registration', self.do_registration)
         self.model = model
+        # self.ort_sess = ort.InferenceSession('network.onnx', providers=['CUDAExecutionProvider'])
+        self.ort_sess = ort.InferenceSession('network.onnx')
 
     def do_registration(self, request, response):
         # extract data from input clouds
@@ -131,7 +170,7 @@ class GeotransformerROS(Node):
 
         if len(target_cloud.data) == 0:
             #  use identity
-            print("response returned: basd data")
+            print("response returned: bad data")
             return response
 
         def get_points(msg):
@@ -141,14 +180,27 @@ class GeotransformerROS(Node):
             points_float = np.frombuffer(points_data, dtype=np.float32)
             points_float = points_float[~np.isnan(points_float)]
             points_float = np.reshape(points_float, (-1, 3))
-            inds = np.linspace(0, points_float.shape[0] - 1, 10000, dtype=np.int32).flatten()
+            inds = np.linspace(0, points_float.shape[0] - 1, 2000, dtype=np.int32).flatten()
             data_float = points_float[inds, :]
             return data_float
 
-        source_cloud_points = get_points(source_cloud)
-        target_cloud_points = get_points(target_cloud)
+        try:
+            source_cloud_points = get_points(source_cloud)
+            target_cloud_points = get_points(target_cloud)
+        except Exception as e:
+            print("Exception: ", e)
+            return response
 
-        estimated_transform, ref_points, src_points = run_model(self.model, source_cloud_points, target_cloud_points)
+        try:
+            estimated_transform, ref_points, src_points = run_model(self.ort_sess, self.model, source_cloud_points,
+                                                                        target_cloud_points)
+            estimated_transform = estimated_transform.detach().cpu().numpy()
+            if np.linalg.norm(estimated_transform[:3,3]) > 0.3:
+                print("bad norm")
+                return response
+        except Exception as e:
+            print(e)
+            return response
 
         response.estimated_transform.translation.x = estimated_transform[0, 3].item()
         response.estimated_transform.translation.y = estimated_transform[1, 3].item()
@@ -159,14 +211,12 @@ class GeotransformerROS(Node):
         rotation = R.from_matrix(rot)
         quaternion = rotation.as_quat()
 
-        response.estimated_transform.rotation.w = quaternion[3].item()
-        response.estimated_transform.rotation.x = quaternion[0].item()
-        response.estimated_transform.rotation.y = quaternion[1].item()
-        response.estimated_transform.rotation.z = quaternion[2].item()
+        response.estimated_transform.rotation.w = 1.0  # quaternion[3].item()
+        response.estimated_transform.rotation.x = 0.0  # quaternion[0].item()
+        response.estimated_transform.rotation.y = 0.0  # quaternion[1].item()
+        response.estimated_transform.rotation.z = 0.0  # quaternion[2].item()
 
-        print("response returned")
-
-        torch.cuda.empty_cache()
+        print("response returned: ", response.estimated_transform)
 
         return response
 
