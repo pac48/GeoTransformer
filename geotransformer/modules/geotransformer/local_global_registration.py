@@ -109,19 +109,19 @@ class LocalGlobalRegistration(nn.Module):
 
         max_corr = np.max([y - x for x, y in chunks])
         target_chunks = [(i * max_corr, i * max_corr + y - x) for i, (x, y) in enumerate(chunks)]
-        indices = torch.cat([torch.arange(x, y) for x, y in target_chunks], dim=0).cuda()
+        indices = torch.cat([torch.arange(x, y) for x, y in target_chunks], dim=0).cpu()
         indices0 = indices.unsqueeze(1).expand(indices.shape[0], 3)  # (total,) -> (total, 3)
-        indices1 = torch.arange(3).unsqueeze(0).expand(indices.shape[0], 3).cuda()  # (3,) -> (total, 3)
+        indices1 = torch.arange(3).unsqueeze(0).expand(indices.shape[0], 3).cpu()  # (3,) -> (total, 3)
 
-        batch_ref_corr_points = torch.zeros(batch_size * max_corr, 3).cuda()
+        batch_ref_corr_points = torch.zeros(batch_size * max_corr, 3).cpu()
         batch_ref_corr_points.index_put_([indices0, indices1], ref_corr_points)
         batch_ref_corr_points = batch_ref_corr_points.view(batch_size, max_corr, 3)
 
-        batch_src_corr_points = torch.zeros(batch_size * max_corr, 3).cuda()
+        batch_src_corr_points = torch.zeros(batch_size * max_corr, 3).cpu()
         batch_src_corr_points.index_put_([indices0, indices1], src_corr_points)
         batch_src_corr_points = batch_src_corr_points.view(batch_size, max_corr, 3)
 
-        batch_corr_scores = torch.zeros(batch_size * max_corr).cuda()
+        batch_corr_scores = torch.zeros(batch_size * max_corr).cpu()
         batch_corr_scores.index_put_([indices], corr_scores)
         batch_corr_scores = batch_corr_scores.view(batch_size, max_corr)
 

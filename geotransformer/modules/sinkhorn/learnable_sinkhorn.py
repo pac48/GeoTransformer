@@ -61,7 +61,7 @@ class LearnableLogOptimalTransport(nn.Module):
         log_nu[padded_col_masks] = -self.inf
 
         outputs = self.log_sinkhorn_normalization(padded_scores, log_mu, log_nu)
-        outputs = outputs - norm.cuda().unsqueeze(1).unsqueeze(2)
+        outputs = outputs - norm.unsqueeze(1).unsqueeze(2)
 
         return outputs
 
