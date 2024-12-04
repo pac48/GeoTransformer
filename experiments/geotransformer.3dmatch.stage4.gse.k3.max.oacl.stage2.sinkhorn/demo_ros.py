@@ -108,13 +108,14 @@ def run_model(model, ref_points, src_points):
     src_points = points_0[lengths_0[0]:].cpu().numpy()
     estimated_transform = estimated_transform.detach().cpu().numpy()
 
-    return estimated_transform, ref_points, src_points
+    return estimated_transform, ref_points, src_points, ref_corr_points, src_corr_points, corr_scores
 
 
 import rclpy
 from rclpy.node import Node
 from tutorial_interfaces.srv import Registration
-
+from visualization_msgs.msg import MarkerArray, Marker
+from geometry_msgs.msg import Point
 
 class GeotransformerROS(Node):
 
@@ -122,53 +123,89 @@ class GeotransformerROS(Node):
         super().__init__('geotransformer')
         self.srv = self.create_service(Registration, 'geotransformer_registration', self.do_registration)
         self.model = model
+        self.publisher = self.create_publisher(MarkerArray, 'visualization_marker', 10)
+
+
+    def publish_line(self, ref_corr_points, src_corr_points):
+        marker_array = MarkerArray()
+
+        # Create a line marker
+        line_marker = Marker()
+        line_marker.header.frame_id = "zed_left_camera_optical_frame"  # Adjust the frame ID as needed
+        line_marker.header.stamp = self.get_clock().now().to_msg()
+        line_marker.ns = "my_line"
+        line_marker.id = 0
+        line_marker.type = Marker.LINE_LIST
+        line_marker.action = Marker.ADD
+
+        # Set line properties
+        line_marker.scale.x = 0.002  # Line width
+        line_marker.color.r = 0.0
+        line_marker.color.g = 1.0
+        line_marker.color.b = 0.0
+        line_marker.color.a = 1.0
+
+        # Add points to the line
+        for ind in range(ref_corr_points.shape[0]):
+            line_marker.points.append(Point(x=float(ref_corr_points[ind,0]), y=float(ref_corr_points[ind,1]), z=float(ref_corr_points[ind,2])))
+            line_marker.points.append(Point(x=float(src_corr_points[ind,0]), y=float(src_corr_points[ind,1]), z=float(src_corr_points[ind,2])))
+
+        # Add the marker to the array
+        marker_array.markers.append(line_marker)
+
+        # Publish the marker array
+        self.publisher.publish(marker_array)
+
 
     def do_registration(self, request, response):
-        # extract data from input clouds
-        print("got request")
-        source_cloud = request.source_cloud
-        target_cloud = request.target_cloud
+            # extract data from input clouds
+            print("got request")
+            source_cloud = request.source_cloud
+            target_cloud = request.target_cloud
 
-        if len(target_cloud.data) == 0:
-            #  use identity
-            print("response returned: basd data")
+            if len(target_cloud.data) == 0:
+                #  use identity
+                print("response returned: basd data")
+                return response
+
+            def get_points(msg):
+                data = np.frombuffer(msg.data, dtype=np.uint8)
+                data = np.reshape(data, (-1, 16))
+                points_data = data[:, :12].copy()
+                points_float = np.frombuffer(points_data, dtype=np.float32)
+                points_float = points_float[~np.isnan(points_float)]
+                points_float = np.reshape(points_float, (-1, 3))
+                inds = np.linspace(0, points_float.shape[0] - 1, 10000, dtype=np.int32).flatten()
+                data_float = points_float[inds, :]
+                return data_float
+
+            source_cloud_points = get_points(source_cloud)
+            target_cloud_points = get_points(target_cloud)
+
+            estimated_transform, ref_points, src_points, ref_corr_points, src_corr_points, corr_scores = run_model(
+                self.model, source_cloud_points, target_cloud_points)
+
+            self.publish_line(ref_corr_points, src_corr_points)
+
+            response.estimated_transform.translation.x = estimated_transform[0, 3].item()
+            response.estimated_transform.translation.y = estimated_transform[1, 3].item()
+            response.estimated_transform.translation.z = estimated_transform[2, 3].item()
+
+            rot = estimated_transform[:3, :3]
+            # Convert rotation matrix to quaternion
+            rotation = R.from_matrix(rot)
+            quaternion = rotation.as_quat()
+
+            response.estimated_transform.rotation.w = quaternion[3].item()
+            response.estimated_transform.rotation.x = quaternion[0].item()
+            response.estimated_transform.rotation.y = quaternion[1].item()
+            response.estimated_transform.rotation.z = quaternion[2].item()
+
+            print("response returned")
+
+            torch.cuda.empty_cache()
+
             return response
-
-        def get_points(msg):
-            data = np.frombuffer(msg.data, dtype=np.uint8)
-            data = np.reshape(data, (-1, 16))
-            points_data = data[:, :12].copy()
-            points_float = np.frombuffer(points_data, dtype=np.float32)
-            points_float = points_float[~np.isnan(points_float)]
-            points_float = np.reshape(points_float, (-1, 3))
-            inds = np.linspace(0, points_float.shape[0] - 1, 10000, dtype=np.int32).flatten()
-            data_float = points_float[inds, :]
-            return data_float
-
-        source_cloud_points = get_points(source_cloud)
-        target_cloud_points = get_points(target_cloud)
-
-        estimated_transform, ref_points, src_points = run_model(self.model, source_cloud_points, target_cloud_points)
-
-        response.estimated_transform.translation.x = estimated_transform[0, 3].item()
-        response.estimated_transform.translation.y = estimated_transform[1, 3].item()
-        response.estimated_transform.translation.z = estimated_transform[2, 3].item()
-
-        rot = estimated_transform[:3, :3]
-        # Convert rotation matrix to quaternion
-        rotation = R.from_matrix(rot)
-        quaternion = rotation.as_quat()
-
-        response.estimated_transform.rotation.w = quaternion[3].item()
-        response.estimated_transform.rotation.x = quaternion[0].item()
-        response.estimated_transform.rotation.y = quaternion[1].item()
-        response.estimated_transform.rotation.z = quaternion[2].item()
-
-        print("response returned")
-
-        torch.cuda.empty_cache()
-
-        return response
 
 
 def run_ros():
